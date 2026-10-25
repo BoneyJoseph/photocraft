@@ -120,7 +120,15 @@ echo "==> assembling $APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 # Executable and icon carry the display name (CFBundleExecutable / CFBundleIconFile).
 cp "$WORK/bin/photocraft" "$APP/Contents/MacOS/PhotoCraft"
-cp "$ROOT/assets/app-icon/photocraft.icns" "$APP/Contents/Resources/PhotoCraft.icns"
+ICONSET="$WORK/custom.iconset"
+mkdir -p "$ICONSET"
+swift "$HERE/custom-icon.swift" "$WORK/custom-1024.png"
+for edge in 16 32 128 256 512; do
+  sips -s format png -z "$edge" "$edge" "$WORK/custom-1024.png" --out "$ICONSET/icon_${edge}x${edge}.png" >/dev/null
+  twice=$((edge * 2))
+  sips -s format png -z "$twice" "$twice" "$WORK/custom-1024.png" --out "$ICONSET/icon_${edge}x${edge}@2x.png" >/dev/null
+done
+iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/PhotoCraft.icns"
 # Notices for the bundled font fallback, included before the bundle is signed.
 cp "$ROOT/NOTICE" "$ROOT/ATTRIBUTION.md" "$APP/Contents/Resources/"
 # Licences of the embedded craft-fonts fonts (only when built with CRAFT_FONTS_DIR).
