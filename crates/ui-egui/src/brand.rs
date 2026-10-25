@@ -1,6 +1,6 @@
 //! Original community-build title-bar mark. The Dock icon is rendered by the macOS packaging script.
 
-use egui::{Context, Id, Rect, Ui};
+use egui::{Id, Rect, Ui};
 
 fn rect_id() -> Id {
     Id::unique("photocraft-brand-mark-rect")
@@ -24,7 +24,7 @@ pub fn paint_mark(ui: &Ui, r: Rect) {
 
 /// The rect the mark was last painted.
 #[cfg(test)]
-pub fn mark_rect(ctx: &Context) -> Option<Rect> {
+pub fn mark_rect(ctx: &egui::Context) -> Option<Rect> {
     ctx.data(|d| d.get_temp(rect_id()))
 }
 
