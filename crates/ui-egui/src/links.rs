@@ -1,6 +1,4 @@
-//! Community and project links: the Help menu, the About dialog, the start screen and the title
-//! bar all open these. URLs follow the crafting-app pattern (`getartcraft.com/apps/<app>`,
-//! `github.com/storytold/<app>`).
+//! Project links for the PhotoCraft community build.
 
 use serde_json::{Value, json};
 
@@ -10,10 +8,7 @@ pub const GITHUB: &str = "https://github.com/BoneyJoseph/photocraft";
 pub const ISSUES: &str = "https://github.com/BoneyJoseph/photocraft/issues";
 
 /// Help-menu links for this fork, without upstream promotion.
-pub const COMMANDS: &[(&str, &str)] = &[
-    ("help.github", GITHUB),
-    ("help.reportIssue", ISSUES),
-];
+pub const COMMANDS: &[(&str, &str)] = &[("help.github", GITHUB), ("help.reportIssue", ISSUES)];
 
 pub fn url_for(id: &str) -> Option<&'static str> {
     COMMANDS.iter().find(|c| c.0 == id).map(|c| c.1)
@@ -36,7 +31,9 @@ pub fn link_row(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     let t = crate::theme::Tokens::get(ui.ctx());
     ui.horizontal_centered(|ui| {
         for (i, (label, url)) in [("Source on GitHub", GITHUB), ("Report an issue", ISSUES)].into_iter().enumerate() {
-            if i > 0 { ui.label(egui::RichText::new("  ·  ").color(t.text_faint)); }
+            if i > 0 {
+                ui.label(egui::RichText::new("  ·  ").color(t.text_faint));
+            }
             if ui.link(egui::RichText::new(label).color(t.accent)).on_hover_text(url).clicked() {
                 open(app, ui.ctx(), url);
             }
