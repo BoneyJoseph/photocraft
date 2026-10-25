@@ -1,0 +1,46 @@
+name: Apple Silicon Community App
+
+on:
+  push:
+    branches: [custom/apple-silicon-community]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 120
+    env:
+      MACOS_SIGN_IDENTITY: "-"
+      PHOTOCRAFT_BUILD_LABEL: "community"
+      CARGO_INCREMENTAL: "0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: photocraft-apple-silicon-custom
+      - name: Verify Apple Silicon Rust source
+        run: cargo check --locked --target aarch64-apple-darwin -p photocraft -p photocraft-cli
+      - name: Build and package native PhotoCraft
+        run: bash packaging/macos/package.sh --arch aarch64
+      - name: Check architecture and signature
+        run: |
+          set -euo pipefail
+          test -d target/macos-package/PhotoCraft.app
+          lipo -archs target/macos-package/PhotoCraft.app/Contents/MacOS/PhotoCraft | grep -w arm64
+          codesign --verify --strict --deep target/macos-package/PhotoCraft.app
+          ls -lh dist/release/*macos-aarch64.dmg
+      - name: Publish downloadable DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: PhotoCraft-Apple-Silicon-Custom-DMG
+          path: |
+            dist/release/*macos-aarch64.dmg
+            dist/release/*macos-aarch64.zip
+          if-no-files-found: error
+          retention-days: 30
