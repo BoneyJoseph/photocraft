@@ -5,6 +5,11 @@ on:
     branches: [custom/apple-silicon-community]
   workflow_dispatch:
 
+# Keep the latest custom installer build when multiple edits land close together.
+concurrency:
+  group: photocraft-apple-silicon-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
