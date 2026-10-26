@@ -4,7 +4,7 @@
 #   $DIST/photocraft-<version>-macos-<arch>.dmg          PhotoCraft.app on a drag-to-Applications DMG
 #   $DIST/photocraft-cli-<version>-macos-<arch>.zip      the headless CLI
 #
-# Usage: packaging/macos/package.sh [--arch universal|aarch64|x86_64] [--skip-build]
+# Usage: packaging/macos/package.sh [--arch universal|aarch64|x86_64] [--skip-build] [--app-only]
 #
 # Signing (env):
 #   MACOS_SIGN_IDENTITY   codesign identity (name or SHA-1). Default "-" = ad-hoc (local testing;
@@ -19,10 +19,12 @@ HERE="$ROOT/packaging/macos"
 
 ARCH=universal
 SKIP_BUILD=0
+APP_ONLY=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --arch) ARCH="$2"; shift 2 ;;
     --skip-build) SKIP_BUILD=1; shift ;;
+    --app-only) APP_ONLY=1; shift ;;
     -h | --help) sed -n '2,16p' "$0"; exit 0 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
@@ -58,12 +60,16 @@ echo "==> PhotoCraft $VERSION for macOS ($ARCH), identity: $IDENTITY, notarize: 
 if [[ "$SKIP_BUILD" = 0 ]]; then
   args=()
   for t in "${TARGETS[@]}"; do args+=(--target "$t"); done
-  (cd "$ROOT" && cargo build --release --locked -p photocraft -p photocraft-cli --features heif "${args[@]}")
+  packages=(-p photocraft)
+  [[ "$APP_ONLY" = 1 ]] || packages+=(-p photocraft-cli)
+  (cd "$ROOT" && cargo build --release --locked "${packages[@]}" --features heif "${args[@]}")
 fi
 
 rm -rf "$WORK"
 mkdir -p "$WORK/bin"
-for bin in photocraft photocraft-cli; do
+binaries=(photocraft)
+[[ "$APP_ONLY" = 1 ]] || binaries+=(photocraft-cli)
+for bin in "${binaries[@]}"; do
   inputs=()
   for t in "${TARGETS[@]}"; do inputs+=("$CARGO_TARGET_DIR/$t/release/$bin"); done
   lipo -create -output "$WORK/bin/$bin" "${inputs[@]}"
@@ -178,6 +184,13 @@ if [[ "$NOTARIZE" = 1 ]]; then
   notarize "$DMG"
   staple "$DMG"
   spctl --assess --type open --context context:primary-signature -vvv "$DMG"
+fi
+
+# App-only distributions omit the separate command-line tool and documentation ZIP.
+if [[ "$APP_ONLY" = 1 ]]; then
+  echo "==> lean GUI-only PhotoCraft DMG ready"
+  ls -lh "$DMG"
+  exit 0
 fi
 
 # ---- CLI ---------------------------------------------------------------------------------------

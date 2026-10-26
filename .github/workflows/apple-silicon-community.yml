@@ -1,4 +1,4 @@
-name: Apple Silicon Community App
+name: Apple Silicon Community App (Lean)
 
 on:
   push:
@@ -29,10 +29,12 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           key: photocraft-apple-silicon-custom
+      - name: Validate packaging script
+        run: bash -n packaging/macos/package.sh
       - name: Verify Apple Silicon Rust source
-        run: cargo check --locked --target aarch64-apple-darwin -p photocraft -p photocraft-cli
+        run: cargo check --locked --target aarch64-apple-darwin -p photocraft
       - name: Build and package native PhotoCraft
-        run: bash packaging/macos/package.sh --arch aarch64
+        run: bash packaging/macos/package.sh --arch aarch64 --app-only
       - name: Check architecture and signature
         run: |
           set -euo pipefail
@@ -43,9 +45,8 @@ jobs:
       - name: Publish downloadable DMG
         uses: actions/upload-artifact@v4
         with:
-          name: PhotoCraft-Apple-Silicon-Custom-DMG
+          name: PhotoCraft-Apple-Silicon-Lean-DMG
           path: |
             dist/release/*macos-aarch64.dmg
-            dist/release/*macos-aarch64.zip
           if-no-files-found: error
           retention-days: 30
