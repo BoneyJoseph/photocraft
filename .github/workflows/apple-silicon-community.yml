@@ -12,6 +12,7 @@ concurrency:
 
 permissions:
   contents: read
+  actions: write
 
 jobs:
   build:
@@ -43,6 +44,7 @@ jobs:
           codesign --verify --strict --deep target/macos-package/PhotoCraft.app
           ls -lh dist/release/*macos-aarch64.dmg
       - name: Publish downloadable DMG
+        id: uploaded_lean
         uses: actions/upload-artifact@v4
         with:
           name: PhotoCraft-Apple-Silicon-Lean-DMG
@@ -50,3 +52,31 @@ jobs:
             dist/release/*macos-aarch64.dmg
           if-no-files-found: error
           retention-days: 30
+      # Only remove old installers once this run has produced a verified new DMG.
+      # Keep the current plus one previous lean DMG for rollback. Preserve CI and test artifacts.
+      - name: Prune obsolete installer artifacts
+        continue-on-error: true
+        uses: actions/github-script@v7
+        env:
+          CURRENT_ARTIFACT_ID: ${{ steps.uploaded_lean.outputs.artifact-id }}
+        with:
+          script: |
+            const name = 'PhotoCraft-Apple-Silicon-Lean-DMG';
+            const oldNames = new Set([name, 'PhotoCraft-Apple-Silicon-Custom-DMG']);
+            const currentId = Number(process.env.CURRENT_ARTIFACT_ID);
+            if (!Number.isSafeInteger(currentId) || currentId <= 0) {
+              throw new Error('Uploaded lean installer ID was not returned');
+            }
+            const { owner, repo } = context.repo;
+            const artifacts = await github.paginate(github.rest.actions.listArtifactsForRepo, {
+              owner, repo, per_page: 100,
+            });
+            const olderLean = artifacts.filter(a => a.name === name && a.id !== currentId && !a.expired)
+              .sort((a, b) => b.id - a.id);
+            const keep = new Set([currentId, ...olderLean.slice(0, 1).map(a => a.id)]);
+            const old = artifacts.filter(a => oldNames.has(a.name) && !keep.has(a.id));
+            for (const a of old) {
+              await github.rest.actions.deleteArtifact({ owner, repo, artifact_id: a.id });
+              core.info(`Deleted old installer ${a.name} (#${a.id})`);
+            }
+            core.info(`Kept ${keep.size} lean installer(s); removed ${old.length} obsolete installer artifacts.`);
